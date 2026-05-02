@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoSecteur Pro</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet MarkerCluster -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- PapaParse -->
+<script src="https://unpkg.com/papaparse@5.4.0/papaparse.min.js"></script>
+<!-- SheetJS -->
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --ink: #0f1117;
+  --paper: #f8f7f2;
+  --panel: #ffffff;
+  --border: #e2e0d8;
+  --accent: #1a56ff;
+  --accent-light: #e8eeff;
+  --green: #00a86b;
+  --green-light: #e6f7f1;
+  --orange: #f55c00;
+  --orange-light: #fff0e8;
+  --purple: #7c3aed;
+  --purple-light: #f3eeff;
+  --red: #e53e3e;
+  --muted: #8b8780;
+  --muted2: #c5c3bc;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --r: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body { font-family: var(--sans); background: var(--paper); color: var(--ink); display:flex; flex-direction:column; }
+
+/* ── TOPBAR ── */
+.topbar {
+  display:flex; align-items:center; gap:0; height:52px;
+  background:var(--ink); color:#fff; flex-shrink:0;
+  border-bottom: 3px solid var(--accent);
+  padding: 0 16px;
+  position:relative; z-index:1000;
+}
+.logo {
+  font-family: var(--mono); font-weight:600; font-size:16px;
+  letter-spacing:-0.5px; color:#fff; margin-right:24px;
+}
+.logo span { color: var(--accent); }
+.topbar-stats { display:flex; gap:1px; margin-right:auto; }
+.tstat {
+  display:flex; flex-direction:column; justify-content:center;
+  padding: 0 14px; height:40px; border-radius:4px;
+}
+.tstat-v { font-family:var(--mono); font-size:15px; font-weight:600; color:#fff; line-height:1; }
+.tstat-l { font-size:9px; color:#6b7280; text-transform:uppercase; letter-spacing:.8px; margin-top:2px; }
+.topbar-sep { width:1px; height:28px; background:#2a2d36; margin:0 4px; }
+.topbar-actions { display:flex; gap:6px; align-items:center; }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 14px; border-radius:var(--r); border:none;
+  font-family:var(--sans); font-size:12px; font-weight:500;
+  cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#1347e0; }
+.btn-outline { background:transparent; border:1.5px solid #2a2d36; color:#9ca3af; }
+.btn-outline:hover { border-color:#4a5060; color:#fff; }
+.btn-success { background:var(--green); color:#fff; }
+.btn-success:hover { opacity:.88; }
+.btn-danger { background:transparent; border:1.5px solid #ff444422; color:#ff6b6b; }
+.btn-danger:hover { background:#ff3b3b18; }
+.btn-sm { padding:5px 10px; font-size:11px; border-radius:6px; }
+.btn-icon { padding:6px 8px; }
+
+/* ── LAYOUT ── */
+.app { display:flex; flex:1; overflow:hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width:300px; min-width:300px; background:var(--panel);
+  border-right:1px solid var(--border); display:flex; flex-direction:column;
+  overflow:hidden; box-shadow: 2px 0 8px rgba(0,0,0,.04);
+}
+.sidebar-tabs {
+  display:flex; border-bottom:1px solid var(--border); flex-shrink:0;
+  background: #fafaf8;
+}
+.stab {
+  flex:1; padding:12px 6px; text-align:center;
+  font-size:10px; font-weight:600; color:var(--muted);
+  cursor:pointer; border-bottom:2px solid transparent;
+  transition:all .15s; text-transform:uppercase; letter-spacing:.6px;
+}
+.stab.on { color:var(--accent); border-bottom-color:var(--accent); background:#fff; }
+.stab:hover:not(.on) { color:var(--ink); }
+
+.spanel { flex:1; overflow-y:auto; padding:12px; display:none; }
+.spanel.on { display:block; }
+.spanel::-webkit-scrollbar { width:4px; }
+.spanel::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.stitle {
+  font-size:9px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:1px;
+  margin-bottom:8px; margin-top:4px; font-family:var(--mono);
+}
+
+/* ── FILTER PANEL ── */
+.filter-group { margin-bottom:14px; }
+.filter-select {
+  width:100%; padding:8px 10px;
+  background:#fafaf8; border:1.5px solid var(--border);
+  border-radius:var(--r); font-family:var(--sans); font-size:12px;
+  color:var(--ink); outline:none; cursor:pointer;
+  transition: border-color .15s;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b8780' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position: right 10px center;
+  padding-right:30px;
+}
+.filter-select:focus { border-color:var(--accent); }
+.filter-label { font-size:11px; font-weight:500; color:var(--ink); margin-bottom:5px; display:flex; align-items:center; gap:6px; }
+.filter-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+.filter-clear {
+  width:100%; padding:7px; border-radius:var(--r);
+  background:transparent; border:1.5px dashed var(--border);
+  color:var(--muted); font-size:11px; cursor:pointer; transition:all .15s;
+  font-family:var(--sans);
+}
+.filter-clear:hover { border-color:var(--red); color:var(--red); }
+
+/* ── TOOL BUTTONS ── */
+.tool-btn {
+  width:100%; padding:10px 12px; border-radius:var(--r);
+  background:#fafaf8; border:1.5px solid var(--border);
+  color:var(--ink); font-family:var(--sans); font-size:12px;
+  cursor:pointer; display:flex; align-items:center; gap:10px;
+  margin-bottom:6px; transition:all .15s; text-align:left;
+}
+.tool-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+.tool-btn.on { background:var(--accent-light); border-color:var(--accent); color:var(--accent); }
+.tool-btn .ti { font-size:16px; width:20px; text-align:center; }
+.tool-btn .td { flex:1; }
+.tool-btn .td small { display:block; font-size:10px; color:var(--muted); margin-top:1px; }
+.tool-btn.on .td small { color:var(--accent); opacity:.7; }
+
+/* ── CARDS ── */
+.card {
+  background:#fafaf8; border:1.5px solid var(--border);
+  border-radius:var(--r); padding:10px 12px; margin-bottom:8px;
+  transition: all .15s;
+}
+.card:hover { border-color:var(--muted2); box-shadow:var(--shadow); }
+.card-hd { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.card-color { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+.card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.card-name { font-weight:600; font-size:13px; flex:1; }
+.card-count {
+  font-family:var(--mono); font-size:10px; background:var(--border);
+  padding:2px 7px; border-radius:20px; color:var(--muted);
+}
+.card-meta { font-size:11px; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; }
+.card-acts { display:flex; gap:4px; margin-left:4px; }
+.ia { background:none; border:none; cursor:pointer; color:var(--muted); font-size:13px; padding:2px 4px; border-radius:4px; transition:all .15s; }
+.ia:hover { color:var(--ink); background:var(--border); }
+.ia.del:hover { color:var(--red); background:#ff3b3b12; }
+
+/* ── COLOR PICKER ── */
+.cprow { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+.csw {
+  width:24px; height:24px; border-radius:5px; cursor:pointer;
+  border:2px solid transparent; transition:all .15s;
+}
+.csw.on { border-color:var(--ink); transform:scale(1.15); box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
+
+/* ── MAP ── */
+.map-wrap { position:relative; flex:1; overflow:hidden; }
+#map { position:absolute; inset:0; }
+
+/* Leaflet custom styles */
+.leaflet-control-zoom {
+  border:none !important;
+  box-shadow: var(--shadow) !important;
+}
+.leaflet-control-zoom a {
+  background:#fff !important; color:var(--ink) !important;
+  border-color:var(--border) !important; font-size:16px !important;
+  width:32px !important; height:32px !important; line-height:32px !important;
+  font-weight:400 !important;
+}
+.leaflet-control-zoom a:hover { background:#f0f0ef !important; }
+.leaflet-control-attribution {
+  font-size:9px !important; background:rgba(255,255,255,.8) !important;
+}
+.leaflet-popup-content-wrapper {
+  border-radius:10px !important; padding:0 !important;
+  box-shadow: var(--shadow-lg) !important; border:1.5px solid var(--border) !important;
+}
+.leaflet-popup-content { margin:0 !important; padding:12px 14px !important; }
+.leaflet-popup-tip-container { margin-top:-1px !important; }
+
+/* Custom cluster styles */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+  background:rgba(26,86,255,.15) !important;
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  background:rgba(26,86,255,.9) !important; color:#fff !important;
+  font-family:var(--mono) !important; font-weight:600 !important; font-size:11px !important;
+}
+
+/* Map toolbar */
+.map-toolbar {
+  position:absolute; top:12px; left:12px; z-index:500;
+  display:flex; flex-direction:column; gap:6px;
+}
+.map-tool-btn {
+  width:36px; height:36px; background:#fff;
+  border:1.5px solid var(--border); border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:15px; transition:all .15s;
+  box-shadow:var(--shadow); color:var(--muted);
+}
+.map-tool-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+.map-tool-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* Selection bar */
+.sel-bar {
+  position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+  z-index:500; background:#fff; border:1.5px solid var(--border);
+  border-radius:12px; padding:10px 16px;
+  display:flex; align-items:center; gap:12px;
+  box-shadow:var(--shadow-lg); opacity:0; pointer-events:none;
+  transition:all .2s; white-space:nowrap;
+}
+.sel-bar.show { opacity:1; pointer-events:all; transform:translateX(-50%) translateY(0); }
+.sel-count { font-family:var(--mono); font-size:22px; font-weight:600; color:var(--accent); }
+.sel-label { font-size:11px; color:var(--muted); }
+.sel-div { width:1px; height:36px; background:var(--border); }
+
+/* Lasso canvas */
+#lassoCanvas {
+  position:absolute; inset:0; pointer-events:none;
+  z-index:400;
+}
+#lassoCanvas.active { pointer-events:all; cursor:crosshair; }
+
+/* Tooltip */
+.map-tooltip {
+  position:absolute; background:#fff; border:1.5px solid var(--border);
+  border-radius:10px; padding:10px 13px; font-size:12px;
+  pointer-events:none; z-index:600; min-width:160px; display:none;
+  box-shadow:var(--shadow-lg); font-family:var(--sans);
+}
+.tt-id { font-weight:700; font-size:13px; margin-bottom:5px; color:var(--ink); }
+.tt-row { color:var(--muted); margin-bottom:2px; display:flex; gap:6px; }
+.tt-sec { margin-top:6px; font-weight:600; font-size:12px; }
+
+/* Coords display */
+.map-coords {
+  position:absolute; bottom:8px; left:8px; z-index:500;
+  font-family:var(--mono); font-size:9px; color:var(--muted);
+  background:rgba(255,255,255,.85); padding:3px 8px; border-radius:4px;
+  pointer-events:none; border:1px solid var(--border);
+}
+
+/* ── MODALS ── */
+.overlay {
+  position:fixed; inset:0; background:rgba(15,17,23,.5);
+  z-index:2000; display:flex; align-items:center; justify-content:center;
+  backdrop-filter:blur(6px); opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.overlay.open { opacity:1; pointer-events:all; }
+.modal {
+  background:#fff; border-radius:14px; padding:24px;
+  width:480px; max-width:94vw; max-height:88vh; overflow-y:auto;
+  box-shadow:var(--shadow-lg); border:1.5px solid var(--border);
+  transform:translateY(8px); transition:transform .2s;
+}
+.overlay.open .modal { transform:translateY(0); }
+.modal-lg { width:600px; }
+.m-title { font-family:var(--mono); font-weight:600; font-size:16px; margin-bottom:20px; color:var(--ink); }
+.m-title span { color:var(--accent); }
+.fgrp { margin-bottom:14px; }
+.flbl { display:block; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:5px; }
+.finput {
+  width:100%; padding:9px 12px; background:#fafaf8;
+  border:1.5px solid var(--border); border-radius:var(--r);
+  color:var(--ink); font-family:var(--sans); font-size:13px;
+  outline:none; transition:border-color .15s;
+}
+.finput:focus { border-color:var(--accent); background:#fff; }
+.fsel {
+  width:100%; padding:9px 12px; background:#fafaf8;
+  border:1.5px solid var(--border); border-radius:var(--r);
+  color:var(--ink); font-family:var(--sans); font-size:13px; outline:none; cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b8780' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position: right 10px center;
+  padding-right:30px;
+}
+.fsel:focus { border-color:var(--accent); }
+.m-acts { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+
+/* Import modal specific */
+.drop-zone {
+  border:2px dashed var(--border); border-radius:10px;
+  padding:28px; text-align:center; cursor:pointer; transition:all .2s;
+  margin-bottom:12px; background:#fafaf8;
+}
+.drop-zone:hover, .drop-zone.drag { border-color:var(--accent); background:var(--accent-light); }
+.drop-zone .dz-icon { font-size:32px; margin-bottom:8px; }
+.drop-zone p { font-size:13px; color:var(--muted); margin-top:4px; }
+.drop-zone strong { color:var(--ink); }
+input[type=file] { display:none; }
+
+/* Column mapping table */
+.col-map-table { width:100%; border-collapse:collapse; font-size:12px; }
+.col-map-table th {
+  text-align:left; padding:7px 10px; background:#fafaf8;
+  border-bottom:2px solid var(--border); font-size:10px;
+  font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;
+}
+.col-map-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
+.col-map-table tr:last-child td { border-bottom:none; }
+.col-map-table .field-name { font-family:var(--mono); font-size:11px; font-weight:600; color:var(--ink); }
+.col-map-table .field-req { color:var(--red); margin-left:2px; }
+.col-map-table .field-opt { color:var(--muted); font-size:10px; margin-left:4px; }
+.col-preview { font-family:var(--mono); font-size:10px; color:var(--muted); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-sel {
+  padding:5px 8px; background:#fafaf8; border:1.5px solid var(--border);
+  border-radius:6px; font-size:11px; color:var(--ink); outline:none; cursor:pointer;
+  font-family:var(--sans); min-width:130px;
+}
+.map-sel:focus { border-color:var(--accent); }
+.map-sel.matched { border-color:var(--green); background:var(--green-light); }
+
+/* Progress */
+.progress-wrap { background:var(--border); border-radius:20px; height:8px; overflow:hidden; margin:8px 0; }
+.progress-bar { height:100%; background:var(--accent); border-radius:20px; width:0%; transition:width .3s; }
+.progress-info { font-size:11px; color:var(--muted); display:flex; justify-content:space-between; margin-top:4px; }
+
+/* Notification */
+.notif {
+  position:fixed; top:62px; right:14px; z-index:9999;
+  background:#fff; border:1.5px solid var(--border); border-radius:8px;
+  padding:10px 16px; font-size:13px; box-shadow:var(--shadow-lg);
+  display:flex; align-items:center; gap:8px;
+  animation:notif-in .2s ease; max-width:320px;
+}
+.notif.success { border-left:3px solid var(--green); }
+.notif.error { border-left:3px solid var(--red); }
+.notif.info { border-left:3px solid var(--accent); }
+@keyframes notif-in { from { opacity:0; transform:translateX(16px); } }
+
+/* Badge */
+.badge {
+  display:inline-flex; align-items:center; padding:2px 8px;
+  border-radius:20px; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.4px;
+}
+.badge-blue { background:var(--accent-light); color:var(--accent); }
+.badge-green { background:var(--green-light); color:var(--green); }
+.badge-orange { background:var(--orange-light); color:var(--orange); }
+
+/* Empty state */
+.empty { text-align:center; padding:28px 12px; color:var(--muted); }
+.empty .ei { font-size:30px; margin-bottom:8px; }
+.empty p { font-size:12px; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">Geo<span>Secteur</span> <span style="color:#2a2d36;font-weight:400;font-size:12px">Pro</span></div>
+  <div class="topbar-stats">
+    <div class="tstat"><div class="tstat-v" id="st-dev">0</div><div class="tstat-l">Appareils</div></div>
+    <div class="topbar-sep"></div>
+    <div class="tstat"><div class="tstat-v" id="st-sec">0</div><div class="tstat-l">Secteurs</div></div>
+    <div class="topbar-sep"></div>
+    <div class="tstat"><div class="tstat-v" id="st-tec">0</div><div class="tstat-l">Techniciens</div></div>
+    <div class="topbar-sep"></div>
+    <div class="tstat"><div class="tstat-v" id="st-una" style="color:#f97316">0</div><div class="tstat-l">Non assignés</div></div>
+    <div class="topbar-sep"></div>
+    <div class="tstat"><div class="tstat-v" id="st-filt" style="color:#9ca3af">—</div><div class="tstat-l">Visibles</div></div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-outline btn-sm" onclick="openImport()">⬆ Importer</button>
+    <button class="btn btn-outline btn-sm" onclick="loadDemo()">🎲 Démo</button>
+    <button class="btn btn-success btn-sm" onclick="exportData('csv')">⬇ CSV</button>
+    <button class="btn btn-success btn-sm" onclick="exportData('xlsx')">⬇ Excel</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="stab on" id="tab-filters" onclick="switchTab('filters')">Filtres</div>
+      <div class="stab" id="tab-tools" onclick="switchTab('tools')">Outils</div>
+      <div class="stab" id="tab-sectors" onclick="switchTab('sectors')">Secteurs</div>
+      <div class="stab" id="tab-techs" onclick="switchTab('techs')">Équipes</div>
+    </div>
+
+    <!-- FILTERS PANEL -->
+    <div class="spanel on" id="panel-filters">
+      <div class="stitle">Filtres actifs</div>
+
+      <div class="filter-group">
+        <div class="filter-label"><div class="filter-dot" style="background:#1a56ff"></div>Tournée</div>
+        <select class="filter-select" id="f-tournee" onchange="applyFilters()">
+          <option value="">— Toutes les tournées —</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label"><div class="filter-dot" style="background:#00a86b"></div>Secteur</div>
+        <select class="filter-select" id="f-secteur" onchange="applyFilters()">
+          <option value="">— Tous les secteurs —</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label"><div class="filter-dot" style="background:#7c3aed"></div>Technicien</div>
+        <select class="filter-select" id="f-tech" onchange="applyFilters()">
+          <option value="">— Tous les techniciens —</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label"><div class="filter-dot" style="background:#f55c00"></div>RT (Responsable)</div>
+        <select class="filter-select" id="f-rt" onchange="applyFilters()">
+          <option value="">— Tous les RT —</option>
+        </select>
+      </div>
+
+      <button class="filter-clear" onclick="clearFilters()">✕ Effacer tous les filtres</button>
+
+      <div style="margin-top:16px;">
+        <div class="stitle">Résumé filtres</div>
+        <div id="filter-summary" style="font-size:11px;color:var(--muted);line-height:1.6">
+          Aucun filtre actif
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLS PANEL -->
+    <div class="spanel" id="panel-tools">
+      <div class="stitle">Mode sélection</div>
+      <button class="tool-btn" id="tool-lasso" onclick="setTool('lasso')">
+        <span class="ti">🪣</span><div class="td"><div>Lasso libre</div><small>Dessiner à main levée</small></div>
+      </button>
+      <button class="tool-btn" id="tool-rect" onclick="setTool('rect')">
+        <span class="ti">⬜</span><div class="td"><div>Rectangle</div><small>Sélection rectangulaire</small></div>
+      </button>
+      <button class="tool-btn" id="tool-click" onclick="setTool('click')">
+        <span class="ti">👆</span><div class="td"><div>Clic individuel</div><small>Un appareil à la fois</small></div>
+      </button>
+
+      <div class="stitle" style="margin-top:16px">Actions sélection</div>
+      <button class="tool-btn" onclick="openCreateSector()"><span class="ti">＋</span><div class="td"><div>Nouveau secteur</div></div></button>
+      <button class="tool-btn" onclick="openAddToSector()"><span class="ti">⊕</span><div class="td"><div>Ajouter à secteur</div></div></button>
+      <button class="tool-btn" onclick="clearSel()"><span class="ti">✕</span><div class="td"><div>Vider sélection</div></div></button>
+      <button class="tool-btn" onclick="selAll()"><span class="ti">☑</span><div class="td"><div>Tout sélectionner</div></div></button>
+      <button class="tool-btn" onclick="selFiltered()"><span class="ti">⊘</span><div class="td"><div>Sélectionner filtrés</div></div></button>
+
+      <div class="stitle" style="margin-top:16px">Affichage</div>
+      <button class="tool-btn" id="tool-labels" onclick="toggleLabels()"><span class="ti">🏷</span><div class="td"><div>Labels IDs</div></div></button>
+      <button class="tool-btn" id="tool-cluster" onclick="toggleCluster()" class="on"><span class="ti">⬡</span><div class="td"><div>Clustering</div><small>Regrouper les points</small></div></button>
+      <button class="tool-btn" onclick="fitView()"><span class="ti">🎯</span><div class="td"><div>Ajuster la vue</div></div></button>
+    </div>
+
+    <!-- SECTORS PANEL -->
+    <div class="spanel" id="panel-sectors">
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:12px;justify-content:center" onclick="openCreateSector()">＋ Nouveau secteur</button>
+      <div id="sector-list"><div class="empty"><div class="ei">🗂</div><p>Aucun secteur créé<br>Utilisez le lasso puis<br>créez un secteur</p></div></div>
+    </div>
+
+    <!-- TEAMS PANEL -->
+    <div class="spanel" id="panel-techs">
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:12px;justify-content:center" onclick="openAddPerson('tech')">＋ Nouveau technicien</button>
+      <button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:12px;justify-content:center" onclick="openAddPerson('rt')">＋ Nouveau RT</button>
+      <div id="tech-list"><div class="empty"><div class="ei">👷</div><p>Aucun technicien</p></div></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-wrap" id="map-wrap">
+    <div id="map"></div>
+    <canvas id="lassoCanvas"></canvas>
+
+    <div class="map-toolbar">
+      <div class="map-tool-btn" id="mtool-lasso" onclick="setTool('lasso')" title="Lasso">🪣</div>
+      <div class="map-tool-btn" id="mtool-rect" onclick="setTool('rect')" title="Rectangle">⬜</div>
+      <div class="map-tool-btn" id="mtool-click" onclick="setTool('click')" title="Clic">👆</div>
+    </div>
+
+    <div class="map-tooltip" id="map-tooltip"></div>
+
+    <div class="sel-bar" id="sel-bar">
+      <div><div class="sel-count" id="sel-count">0</div><div class="sel-label">sélectionnés</div></div>
+      <div class="sel-div"></div>
+      <button class="btn btn-primary btn-sm" onclick="openCreateSector()">⊕ Créer secteur</button>
+      <button class="btn btn-outline btn-sm" style="color:var(--ink);border-color:var(--border)" onclick="openAddToSector()">+ Ajouter</button>
+      <button class="btn btn-danger btn-sm" onclick="clearSel()">✕</button>
+    </div>
+
+    <div class="map-coords" id="map-coords"></div>
+  </div>
+</div>
+
+<!-- MODAL: CREATE SECTOR -->
+<div class="overlay" id="m-sector">
+  <div class="modal">
+    <div class="m-title">✦ <span>Créer un secteur</span></div>
+    <div class="fgrp"><label class="flbl">Nom du secteur <span style="color:var(--red)">*</span></label><input class="finput" id="in-sec-name" placeholder="ex: Zone Nord, Tournée A..."></div>
+    <div class="fgrp"><label class="flbl">Technicien assigné</label><select class="fsel" id="in-sec-tech"><option value="">— Non assigné —</option></select></div>
+    <div class="fgrp"><label class="flbl">RT (Responsable de Tournée)</label><select class="fsel" id="in-sec-rt"><option value="">— Aucun —</option></select></div>
+    <div class="fgrp"><label class="flbl">Couleur</label><div class="cprow" id="cp-sector"></div></div>
+    <div id="sec-info" style="font-size:11px;color:var(--muted);margin-top:4px;padding:8px;background:#fafaf8;border-radius:6px"></div>
+    <div class="m-acts"><button class="btn btn-outline" onclick="closeModal('m-sector')">Annuler</button><button class="btn btn-primary" onclick="confirmSector()">Créer le secteur</button></div>
+  </div>
+</div>
+
+<!-- MODAL: ADD TO SECTOR -->
+<div class="overlay" id="m-add">
+  <div class="modal">
+    <div class="m-title">⊕ <span>Ajouter à un secteur</span></div>
+    <div class="fgrp"><label class="flbl">Secteur cible</label><select class="fsel" id="in-add-sec"></select></div>
+    <div class="m-acts"><button class="btn btn-outline" onclick="closeModal('m-add')">Annuler</button><button class="btn btn-primary" onclick="confirmAdd()">Ajouter</button></div>
+  </div>
+</div>
+
+<!-- MODAL: ADD PERSON -->
+<div class="overlay" id="m-person">
+  <div class="modal">
+    <div class="m-title" id="m-person-title">👷 <span>Nouveau technicien</span></div>
+    <div class="fgrp"><label class="flbl">Nom complet <span style="color:var(--red)">*</span></label><input class="finput" id="in-p-name" placeholder="Prénom Nom"></div>
+    <div class="fgrp"><label class="flbl">Code / Identifiant</label><input class="finput" id="in-p-code" placeholder="ex: TECH-01, RT-Sud..."></div>
+    <div class="fgrp"><label class="flbl">Couleur</label><div class="cprow" id="cp-person"></div></div>
+    <input type="hidden" id="in-p-type" value="tech">
+    <div class="m-acts"><button class="btn btn-outline" onclick="closeModal('m-person')">Annuler</button><button class="btn btn-primary" onclick="confirmPerson()">Ajouter</button></div>
+  </div>
+</div>
+
+<!-- MODAL: IMPORT -->
+<div class="overlay" id="m-import">
+  <div class="modal modal-lg">
+    <div class="m-title">⬆ <span>Importer des données</span></div>
+
+    <!-- STEP 1: Upload -->
+    <div id="imp-step-upload">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="dz-icon">📂</div>
+        <p><strong>Cliquer ou glisser un fichier</strong></p>
+        <p>CSV, Excel (.xlsx, .xls) — jusqu'à 6000+ appareils</p>
+        <p style="margin-top:8px"><span class="badge badge-blue">CSV</span> <span class="badge badge-green">XLSX</span> <span class="badge badge-orange">XLS</span></p>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleFile(event)">
+    </div>
+
+    <!-- STEP 2: Sheet select (Excel only) -->
+    <div id="imp-step-sheet" style="display:none">
+      <div class="fgrp">
+        <label class="flbl">Feuille Excel à importer</label>
+        <select class="fsel" id="sheet-select" onchange="onSheetChange()"></select>
+      </div>
+    </div>
+
+    <!-- STEP 3: Column mapping -->
+    <div id="imp-step-map" style="display:none">
+      <div style="margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;color:var(--accent)">
+        <strong>Associez vos colonnes</strong> aux champs GeoSecteur. Les colonnes détectées automatiquement sont pré-sélectionnées.
+      </div>
+      <table class="col-map-table" id="col-map-table"></table>
+      <div id="map-preview" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
+    </div>
+
+    <!-- STEP 4: Geocoding -->
+    <div id="imp-step-geo" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:30px;margin-bottom:10px">🗺</div>
+      <div style="font-weight:600;margin-bottom:6px">Géocodage en cours...</div>
+      <div id="geo-info" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+      <div class="progress-wrap"><div class="progress-bar" id="geo-bar"></div></div>
+      <div class="progress-info"><span id="geo-done"></span><span id="geo-eta"></span></div>
+    </div>
+
+    <!-- STEP 5: Done -->
+    <div id="imp-step-done" style="display:none;text-align:center;padding:16px 0">
+      <div style="font-size:30px;margin-bottom:8px">✅</div>
+      <div id="imp-result" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+
+    <div class="m-acts">
+      <button class="btn btn-outline" onclick="cancelImport()">Annuler</button>
+      <button class="btn btn-primary" id="btn-geo" onclick="startGeocode()" style="display:none">📍 Géocoder les adresses</button>
+      <button class="btn btn-primary" id="btn-import-ok" onclick="confirmImport()" style="display:none">Importer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+let devices=[], sectors=[], technicians=[], rts=[];
+let selSet=new Set(), activeTool=null;
+let showLabels=false, clusterEnabled=true;
+let pendingImport=null, geoCancelled=false;
+let activeFilters={ tournee:'', secteur:'', tech:'', rt:'' };
+let colorSec=null, colorPer=null;
+
+const COLORS=['#1a56ff','#00a86b','#f55c00','#7c3aed','#e53e3e','#0891b2','#d97706','#be185d','#059669','#dc2626','#7c3aed','#ea580c','#16a34a','#2563eb','#9333ea'];
+
+// ════════════════════════════════════════════════════════════
+// MAP INIT (Leaflet)
+// ════════════════════════════════════════════════════════════
+const map = L.map('map', {
+  center:[46.5,2.5], zoom:6,
+  zoomControl:false, attributionControl:true
+});
+
+// CartoDB Positron — matches the screenshot style exactly
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+// Cluster group
+let clusterGroup = L.markerClusterGroup({
+  maxClusterRadius:40,
+  spiderfyOnMaxZoom:true,
+  showCoverageOnHover:false,
+  zoomToBoundsOnClick:true,
+  iconCreateFunction: cluster => {
+    const n=cluster.getChildCount();
+    const sz=n>100?44:n>20?38:32;
+    return L.divIcon({
+      html:`<div style="width:${sz}px;height:${sz}px;background:rgba(26,86,255,.85);border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;box-shadow:0 2px 8px rgba(26,86,255,.4)">${n}</div>`,
+      className:'', iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+    });
+  }
+}).addTo(map);
+
+let normalGroup = L.layerGroup(); // non-clustered
+let sectorPolyGroup = L.layerGroup().addTo(map);
+
+// Map events
+map.on('mousemove', e => {
+  document.getElementById('map-coords').textContent = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+});
+
+// ════════════════════════════════════════════════════════════
+// LASSO ENGINE
+// ════════════════════════════════════════════════════════════
+const lc = document.getElementById('lassoCanvas');
+const lctx = lc.getContext('2d');
+let lassopts=[], lassoDown=false, rectStart=null;
+
+function resizeLasso(){
+  const w=map.getContainer().offsetWidth, h=map.getContainer().offsetHeight;
+  lc.width=w; lc.height=h;
+}
+resizeLasso();
+window.addEventListener('resize', resizeLasso);
+map.on('resize', resizeLasso);
+
+function setTool(t){
+  activeTool = activeTool===t ? null : t;
+  // Update sidebar + map toolbar buttons
+  ['lasso','rect','click'].forEach(x=>{
+    document.getElementById('tool-'+x)?.classList.toggle('on', activeTool===x);
+    document.getElementById('mtool-'+x)?.classList.toggle('on', activeTool===x);
+  });
+  lc.classList.toggle('active', activeTool==='lasso'||activeTool==='rect');
+  if(activeTool==='lasso'||activeTool==='rect'){
+    map.dragging.disable(); map.scrollWheelZoom.disable();
+  } else {
+    map.dragging.enable(); map.scrollWheelZoom.enable();
+  }
+  if(activeTool==='click'){
+    map.getContainer().style.cursor='crosshair';
+  } else {
+    map.getContainer().style.cursor='';
+  }
+}
+
+lc.addEventListener('mousedown', e=>{
+  const r=lc.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  lassoDown=true;
+  if(activeTool==='lasso') lassopts=[{x,y}];
+  else if(activeTool==='rect') rectStart={x,y};
+});
+lc.addEventListener('mousemove', e=>{
+  if(!lassoDown) return;
+  const r=lc.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  lctx.clearRect(0,0,lc.width,lc.height);
+  if(activeTool==='lasso'){ lassopts.push({x,y}); drawLasso(); }
+  else if(rectStart){ drawRect(rectStart,{x,y}); }
+});
+lc.addEventListener('mouseup', e=>{
+  if(!lassoDown) return;
+  lassoDown=false;
+  const r=lc.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  if(activeTool==='lasso'&&lassopts.length>3){ lassopts.push(lassopts[0]); selInLasso(); }
+  else if(activeTool==='rect'&&rectStart){ selInRect(rectStart,{x,y}); rectStart=null; }
+  lctx.clearRect(0,0,lc.width,lc.height); lassopts=[];
+});
+
+function drawLasso(){
+  lctx.beginPath(); lctx.moveTo(lassopts[0].x, lassopts[0].y);
+  lassopts.forEach(p=>lctx.lineTo(p.x,p.y));
+  lctx.strokeStyle='#1a56ff'; lctx.lineWidth=2; lctx.setLineDash([5,3]); lctx.stroke();
+  lctx.fillStyle='rgba(26,86,255,.1)'; lctx.fill();
+}
+function drawRect(s,e){
+  lctx.beginPath(); lctx.rect(s.x,s.y,e.x-s.x,e.y-s.y);
+  lctx.strokeStyle='#1a56ff'; lctx.lineWidth=2; lctx.setLineDash([5,3]); lctx.stroke();
+  lctx.fillStyle='rgba(26,86,255,.08)'; lctx.fill();
+}
+function pip(px,py,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function selInLasso(){
+  const visible=getVisibleDevices();
+  visible.forEach(d=>{
+    if(!d.lat||!d.lng) return;
+    const pt=map.latLngToContainerPoint([d.lat,d.lng]);
+    if(pip(pt.x,pt.y,lassopts)) selSet.add(d.id);
+  });
+  updateSel();
+}
+function selInRect(s,e){
+  const x1=Math.min(s.x,e.x),x2=Math.max(s.x,e.x),y1=Math.min(s.y,e.y),y2=Math.max(s.y,e.y);
+  const visible=getVisibleDevices();
+  visible.forEach(d=>{
+    if(!d.lat||!d.lng) return;
+    const pt=map.latLngToContainerPoint([d.lat,d.lng]);
+    if(pt.x>=x1&&pt.x<=x2&&pt.y>=y1&&pt.y<=y2) selSet.add(d.id);
+  });
+  updateSel();
+}
+
+// ════════════════════════════════════════════════════════════
+// MARKERS
+// ════════════════════════════════════════════════════════════
+function makeIcon(color, selected, id){
+  const r=selected?8:5;
+  const html=`<div style="width:${r*2}px;height:${r*2}px;background:${selected?'#fff':color};border-radius:50%;border:2px solid ${selected?color:'rgba(255,255,255,.7)'};box-shadow:0 1px 4px rgba(0,0,0,.3)${selected?',0 0 0 2px '+color:''}"></div>`;
+  return L.divIcon({html, className:'', iconSize:[r*2,r*2], iconAnchor:[r,r]});
+}
+
+function getDeviceColor(d){
+  const sec=sectors.find(s=>s.devices.includes(d.id));
+  return sec?sec.color:'#94a3b8';
+}
+
+function popupContent(d){
+  const sec=sectors.find(s=>s.devices.includes(d.id));
+  const tech=sec?technicians.find(t=>t.id===sec.techId):null;
+  const rt=sec?rts.find(r=>r.id===sec.rtId):null;
+  return `<div style="font-family:var(--sans)">
+    <div class="tt-id">${d.id}</div>
+    ${d.adresse?`<div class="tt-row"><span>📍</span><span>${d.adresse}${d.cp?' — '+d.cp:''}${d.ville?' '+d.ville:''}</span></div>`:''}
+    ${d.tournee?`<div class="tt-row"><span>🔄</span><span>${d.tournee}</span></div>`:''}
+    ${d.ref?`<div class="tt-row"><span>🔖</span><span>${d.ref}</span></div>`:''}
+    <div class="tt-sec" style="color:${sec?sec.color:'#94a3b8'}">${sec?'⬡ '+sec.name:'⬡ Non assigné'}</div>
+    ${tech?`<div class="tt-row" style="margin-top:4px"><span>👷</span><span>${tech.name}</span></div>`:''}
+    ${rt?`<div class="tt-row"><span>⭐</span><span>RT: ${rt.name}</span></div>`:''}
+  </div>`;
+}
+
+let markerMap={};
+function renderMarkers(){
+  clusterGroup.clearLayers();
+  normalGroup.clearLayers();
+  markerMap={};
+
+  const visible=getVisibleDevices();
+
+  visible.forEach(d=>{
+    if(!d.lat||!d.lng) return;
+    const color=getDeviceColor(d);
+    const sel=selSet.has(d.id);
+    const icon=makeIcon(color,sel,d.id);
+    const m=L.marker([d.lat,d.lng],{icon}).bindPopup(popupContent(d),{maxWidth:260});
+
+    if(activeTool==='click'){
+      m.on('click',e=>{ L.DomEvent.stopPropagation(e); toggleSel(d.id); });
+    }
+
+    m.on('mouseover', e=>{
+      const tt=document.getElementById('map-tooltip');
+      const sec=sectors.find(s=>s.devices.includes(d.id));
+      const tech=sec?technicians.find(t=>t.id===sec.techId):null;
+      tt.innerHTML=`<div class="tt-id">${d.id}</div>
+        ${d.adresse?`<div class="tt-row"><span>📍</span><span>${d.adresse}</span></div>`:''}
+        ${d.ville?`<div class="tt-row"><span>🏙</span><span>${d.cp||''} ${d.ville}</span></div>`:''}
+        ${d.tournee?`<div class="tt-row"><span>🔄</span><span>${d.tournee}</span></div>`:''}
+        <div class="tt-sec" style="color:${sec?sec.color:'#94a3b8'}">${sec?'⬡ '+sec.name:'⬡ Non assigné'}</div>
+        ${tech?`<div class="tt-row"><span>👷</span><span>${tech.name}</span></div>`:''}`;
+      const r=map.getContainer().getBoundingClientRect();
+      const p=map.latLngToContainerPoint([d.lat,d.lng]);
+      let tx=p.x+14, ty=p.y-10;
+      if(tx+180>map.getContainer().offsetWidth) tx=p.x-190;
+      if(ty+140>map.getContainer().offsetHeight) ty=p.y-150;
+      tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.style.display='block';
+    });
+    m.on('mouseout', ()=>{ document.getElementById('map-tooltip').style.display='none'; });
+
+    if(clusterEnabled) clusterGroup.addLayer(m);
+    else normalGroup.addLayer(m);
+    markerMap[d.id]=m;
+  });
+
+  if(!clusterEnabled && !map.hasLayer(normalGroup)) map.addLayer(normalGroup);
+
+  // Update visible count
+  document.getElementById('st-filt').textContent=visible.length.toLocaleString('fr');
+
+  renderSectorPolygons();
+}
+
+// ════════════════════════════════════════════════════════════
+// SECTOR POLYGONS
+// ════════════════════════════════════════════════════════════
+function convexHull(pts){
+  if(pts.length<3) return pts;
+  pts=pts.slice().sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
+  const cross=(O,A,B)=>(A[1]-O[1])*(B[0]-O[0])-(A[0]-O[0])*(B[1]-O[1]);
+  const lo=[]; for(const p of pts){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  const hi=[]; for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(hi.length>=2&&cross(hi[hi.length-2],hi[hi.length-1],p)<=0)hi.pop();hi.push(p);}
+  hi.pop(); lo.pop(); return lo.concat(hi);
+}
+
+function renderSectorPolygons(){
+  sectorPolyGroup.clearLayers();
+  sectors.forEach(s=>{
+    if(!s.devices.length) return;
+    const pts=s.devices.map(id=>devices.find(d=>d.id===id))
+      .filter(d=>d&&d.lat&&d.lng).map(d=>[d.lat,d.lng]);
+    if(pts.length<1) return;
+    const hull=pts.length>=3?convexHull(pts):pts;
+    if(hull.length<2) return;
+    const poly=L.polygon(hull.map(p=>[p[0],p[1]]),{
+      color:s.color, fillColor:s.color, fillOpacity:.1,
+      weight:1.5, opacity:.5, dashArray:'6,4'
+    }).addTo(sectorPolyGroup);
+    // Label
+    const cLat=hull.reduce((a,p)=>a+p[0],0)/hull.length;
+    const cLng=hull.reduce((a,p)=>a+p[1],0)/hull.length;
+    L.marker([cLat,cLng],{
+      icon:L.divIcon({
+        html:`<div style="background:${s.color};color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;font-family:var(--sans);box-shadow:0 1px 4px rgba(0,0,0,.2)">${s.name}</div>`,
+        className:'', iconAnchor:[0,0]
+      }), interactive:false
+    }).addTo(sectorPolyGroup);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// SELECTION
+// ════════════════════════════════════════════════════════════
+function toggleSel(id){ selSet.has(id)?selSet.delete(id):selSet.add(id); updateSel(); }
+function clearSel(){ selSet.clear(); updateSel(); }
+function selAll(){ devices.forEach(d=>selSet.add(d.id)); updateSel(); }
+function selFiltered(){ getVisibleDevices().forEach(d=>selSet.add(d.id)); updateSel(); }
+
+function updateSel(){
+  document.getElementById('sel-count').textContent=selSet.size;
+  document.getElementById('sel-bar').classList.toggle('show',selSet.size>0);
+  renderMarkers();
+}
+
+// ════════════════════════════════════════════════════════════
+// FILTERS
+// ════════════════════════════════════════════════════════════
+function getVisibleDevices(){
+  return devices.filter(d=>{
+    const sec=sectors.find(s=>s.devices.includes(d.id));
+    if(activeFilters.tournee && d.tournee!==activeFilters.tournee) return false;
+    if(activeFilters.secteur){
+      if(!sec||sec.name!==activeFilters.secteur) return false;
+    }
+    if(activeFilters.tech){
+      if(!sec||sec.techId!==activeFilters.tech) return false;
+    }
+    if(activeFilters.rt){
+      if(!sec||sec.rtId!==activeFilters.rt) return false;
+    }
+    return true;
+  });
+}
+
+function applyFilters(){
+  activeFilters.tournee=document.getElementById('f-tournee').value;
+  activeFilters.secteur=document.getElementById('f-secteur').value;
+  activeFilters.tech=document.getElementById('f-tech').value;
+  activeFilters.rt=document.getElementById('f-rt').value;
+  updateFilterSummary();
+  renderMarkers();
+}
+
+function clearFilters(){
+  activeFilters={tournee:'',secteur:'',tech:'',rt:''};
+  ['f-tournee','f-secteur','f-tech','f-rt'].forEach(id=>document.getElementById(id).value='');
+  updateFilterSummary();
+  renderMarkers();
+}
+
+function updateFilterSummary(){
+  const parts=[];
+  if(activeFilters.tournee) parts.push(`Tournée: <strong>${activeFilters.tournee}</strong>`);
+  if(activeFilters.secteur) parts.push(`Secteur: <strong>${activeFilters.secteur}</strong>`);
+  if(activeFilters.tech){
+    const t=technicians.find(x=>x.id===activeFilters.tech);
+    parts.push(`Technicien: <strong>${t?t.name:activeFilters.tech}</strong>`);
+  }
+  if(activeFilters.rt){
+    const r=rts.find(x=>x.id===activeFilters.rt);
+    parts.push(`RT: <strong>${r?r.name:activeFilters.rt}</strong>`);
+  }
+  document.getElementById('filter-summary').innerHTML=parts.length?parts.join('<br>'):'Aucun filtre actif';
+}
+
+function rebuildFilterDropdowns(){
+  const tournees=[...new Set(devices.map(d=>d.tournee).filter(Boolean))].sort();
+  const secNames=sectors.map(s=>s.name).sort();
+
+  fillSelect('f-tournee','— Toutes les tournées —',tournees.map(t=>({v:t,l:t})));
+  fillSelect('f-secteur','— Tous les secteurs —',secNames.map(s=>({v:s,l:s})));
+  fillSelect('f-tech','— Tous les techniciens —',technicians.map(t=>({v:t.id,l:t.name})));
+  fillSelect('f-rt','— Tous les RT —',rts.map(r=>({v:r.id,l:r.name})));
+}
+
+function fillSelect(id,placeholder,opts){
+  const sel=document.getElementById(id);
+  const cur=sel.value;
+  sel.innerHTML=`<option value="">${placeholder}</option>`+opts.map(o=>`<option value="${o.v}"${o.v===cur?'selected':''}>${o.l}</option>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// SECTORS
+// ════════════════════════════════════════════════════════════
+function openCreateSector(){
+  fillPersonSel('in-sec-tech',technicians,'— Non assigné —');
+  fillPersonSel('in-sec-rt',rts,'— Aucun RT —');
+  fillColors('cp-sector','sec',colorSec||COLORS[sectors.length%COLORS.length]);
+  document.getElementById('in-sec-name').value='';
+  document.getElementById('sec-info').textContent=
+    selSet.size?`${selSet.size} appareil(s) sélectionné(s) seront ajoutés à ce secteur.`:'Aucun appareil sélectionné — secteur vide.';
+  openModal('m-sector');
+}
+function confirmSector(){
+  const name=document.getElementById('in-sec-name').value.trim();
+  if(!name){notify('Saisissez un nom de secteur','error');return;}
+  const techId=document.getElementById('in-sec-tech').value||null;
+  const rtId=document.getElementById('in-sec-rt').value||null;
+  const color=colorSec||COLORS[sectors.length%COLORS.length];
+  sectors.forEach(s=>{s.devices=s.devices.filter(id=>!selSet.has(id));});
+  sectors.push({id:'sec_'+Date.now(),name,techId,rtId,color,devices:[...selSet]});
+  selSet.clear();
+  closeModal('m-sector');
+  renderAll();
+  notify(`Secteur "${name}" créé avec succès ✓`,'success');
+}
+function deleteSector(id){
+  if(!confirm('Supprimer ce secteur ?')) return;
+  sectors=sectors.filter(s=>s.id!==id);
+  renderAll(); notify('Secteur supprimé','info');
+}
+function editSector(id){
+  const s=sectors.find(x=>x.id===id);if(!s)return;
+  s.devices.forEach(id=>selSet.add(id));
+  sectors=sectors.filter(x=>x.id!==id);
+  openCreateSector();
+  document.getElementById('in-sec-name').value=s.name;
+  setTimeout(()=>{ colorSec=s.color; fillColors('cp-sector','sec',s.color); },10);
+}
+function openAddToSector(){
+  if(!sectors.length){openCreateSector();return;}
+  document.getElementById('in-add-sec').innerHTML=
+    sectors.map(s=>`<option value="${s.id}">${s.name} (${s.devices.length} appareils)</option>`).join('');
+  openModal('m-add');
+}
+function confirmAdd(){
+  const sid=document.getElementById('in-add-sec').value;
+  const s=sectors.find(x=>x.id===sid);if(!s)return;
+  sectors.forEach(x=>{if(x.id!==sid) x.devices=x.devices.filter(id=>!selSet.has(id));});
+  selSet.forEach(id=>{if(!s.devices.includes(id))s.devices.push(id);});
+  const n=selSet.size; selSet.clear();
+  closeModal('m-add'); renderAll();
+  notify(`${n} appareil(s) ajouté(s) à "${s.name}" ✓`,'success');
+}
+
+// ════════════════════════════════════════════════════════════
+// PEOPLE (Technicians + RTs)
+// ════════════════════════════════════════════════════════════
+function openAddPerson(type){
+  document.getElementById('in-p-type').value=type;
+  document.getElementById('in-p-name').value='';
+  document.getElementById('in-p-code').value='';
+  const list=type==='tech'?technicians:rts;
+  document.getElementById('m-person-title').innerHTML=
+    type==='tech'?'👷 <span>Nouveau technicien</span>':'⭐ <span>Nouveau responsable de tournée</span>';
+  fillColors('cp-person','per',colorPer||COLORS[list.length%COLORS.length]);
+  openModal('m-person');
+}
+function confirmPerson(){
+  const name=document.getElementById('in-p-name').value.trim();
+  if(!name){notify('Saisissez un nom','error');return;}
+  const type=document.getElementById('in-p-type').value;
+  const code=document.getElementById('in-p-code').value.trim()||
+    (type==='tech'?'TECH-':(('RT-'))+(technicians.length+rts.length+1).toString().padStart(2,'0'));
+  const color=colorPer||COLORS[(technicians.length+rts.length)%COLORS.length];
+  const obj={id:(type==='tech'?'tec_':'rt_')+Date.now(),name,code,color};
+  if(type==='tech') technicians.push(obj); else rts.push(obj);
+  closeModal('m-person'); renderAll();
+  notify(`"${name}" ajouté ✓`,'success');
+}
+
+// ════════════════════════════════════════════════════════════
+// IMPORT — File handling
+// ════════════════════════════════════════════════════════════
+let rawRows=[], rawCols=[], workbook=null;
+
+const FIELD_DEFS=[
+  {key:'id',    label:'ID Appareil', req:true,  aliases:['id','identifiant','appareil','device','num','numero','ref','serial']},
+  {key:'lat',   label:'Latitude',    req:false, aliases:['lat','latitude']},
+  {key:'lng',   label:'Longitude',   req:false, aliases:['lng','lon','long','longitude']},
+  {key:'adresse',label:'Adresse',    req:false, aliases:['adresse','address','adr','rue','voie']},
+  {key:'cp',    label:'Code Postal', req:false, aliases:['cp','code_postal','codepostal','postal','zip','postcode']},
+  {key:'ville', label:'Ville',       req:false, aliases:['ville','city','commune','localite','localité']},
+  {key:'tournee',label:'Tournée',    req:false, aliases:['tournee','tournée','tour','round','route']},
+  {key:'secteur',label:'Secteur',    req:false, aliases:['secteur','sector','zone','territoire']},
+  {key:'technicien',label:'Technicien',req:false,aliases:['technicien','tech','technician','intervenant','agent']},
+  {key:'rt',    label:'RT / Resp.',  req:false, aliases:['rt','responsable','manager','chef']},
+  {key:'ref',   label:'Référence',   req:false, aliases:['ref','reference','refexterne','codeexterne']},
+];
+
+function autoDetect(cols){
+  const colsL=cols.map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,''));
+  const mapping={};
+  FIELD_DEFS.forEach(fd=>{
+    const match=fd.aliases.find(a=>colsL.some(c=>c===a||c.includes(a)));
+    if(match){
+      const idx=colsL.findIndex(c=>c===match||c.includes(match));
+      mapping[fd.key]=cols[idx];
+    }
+  });
+  return mapping;
+}
+
+function openImport(){
+  rawRows=[]; rawCols=[]; workbook=null; pendingImport=null; geoCancelled=false;
+  document.getElementById('imp-step-upload').style.display='block';
+  document.getElementById('imp-step-sheet').style.display='none';
+  document.getElementById('imp-step-map').style.display='none';
+  document.getElementById('imp-step-geo').style.display='none';
+  document.getElementById('imp-step-done').style.display='none';
+  document.getElementById('btn-geo').style.display='none';
+  document.getElementById('btn-import-ok').style.display='none';
+  document.getElementById('file-input').value='';
+  openModal('m-import');
+}
+function cancelImport(){ geoCancelled=true; closeModal('m-import'); }
+
+function handleFile(e){
+  const file=e.target.files[0]; if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'){
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const res=Papa.parse(ev.target.result,{header:true,skipEmptyLines:true,encoding:'UTF-8'});
+      rawCols=res.meta.fields||[];
+      rawRows=res.data;
+      showMappingStep();
+    };
+    reader.readAsText(file,'UTF-8');
+  } else if(ext==='xlsx'||ext==='xls'){
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      workbook=XLSX.read(ev.target.result,{type:'binary'});
+      const sheets=workbook.SheetNames;
+      const sel=document.getElementById('sheet-select');
+      sel.innerHTML=sheets.map((s,i)=>`<option value="${i}">${s}</option>`).join('');
+      document.getElementById('imp-step-sheet').style.display='block';
+      onSheetChange();
+    };
+    reader.readAsBinaryString(file);
+  }
+}
+
+function onSheetChange(){
+  const idx=parseInt(document.getElementById('sheet-select').value);
+  const sheet=workbook.Sheets[workbook.SheetNames[idx]];
+  const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+  rawCols=rows.length?Object.keys(rows[0]):[];
+  rawRows=rows;
+  showMappingStep();
+}
+
+function showMappingStep(){
+  const mapping=autoDetect(rawCols);
+  document.getElementById('imp-step-upload').style.display='none';
+  document.getElementById('imp-step-map').style.display='block';
+
+  // Build mapping table
+  const tbody=FIELD_DEFS.map(fd=>{
+    const matched=mapping[fd.key]||'';
+    const preview=matched&&rawRows[0]?String(rawRows[0][matched]||'').slice(0,20):'';
+    return`<tr>
+      <td>
+        <span class="field-name">${fd.label}</span>
+        ${fd.req?'<span class="field-req">*</span>':'<span class="field-opt">optionnel</span>'}
+      </td>
+      <td>
+        <select class="map-sel ${matched?'matched':''}" id="map-${fd.key}" onchange="onMapChange(this,'${fd.key}')">
+          <option value="">— Ignorer —</option>
+          ${rawCols.map(c=>`<option value="${c}" ${c===matched?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td><span class="col-preview" id="prev-${fd.key}">${preview}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('col-map-table').innerHTML=
+    `<thead><tr><th>Champ GeoSecteur</th><th>Colonne de votre fichier</th><th>Aperçu</th></tr></thead><tbody>${tbody}</tbody>`;
+
+  document.getElementById('map-preview').textContent=`${rawRows.length} lignes détectées — ${rawCols.length} colonnes`;
+
+  // Check if geocoding needed
+  const hasCoords=!!(mapping.lat&&mapping.lng);
+  const hasAddr=!!(mapping.adresse||mapping.cp||mapping.ville);
+  if(!hasCoords&&hasAddr){
+    document.getElementById('btn-geo').style.display='block';
+  } else {
+    document.getElementById('btn-import-ok').style.display='block';
+  }
+}
+
+function onMapChange(sel, fieldKey){
+  sel.classList.toggle('matched', !!sel.value);
+  const preview=document.getElementById('prev-'+fieldKey);
+  if(sel.value&&rawRows[0]) preview.textContent=String(rawRows[0][sel.value]||'').slice(0,20);
+  else preview.textContent='';
+  // Recheck geocoding
+  const lat=document.getElementById('map-lat').value;
+  const lng=document.getElementById('map-lng').value;
+  const addr=document.getElementById('map-adresse').value;
+  const cp=document.getElementById('map-cp').value;
+  const ville=document.getElementById('map-ville').value;
+  if(lat&&lng){ document.getElementById('btn-geo').style.display='none'; document.getElementById('btn-import-ok').style.display='block'; }
+  else if(addr||cp||ville){ document.getElementById('btn-geo').style.display='block'; document.getElementById('btn-import-ok').style.display='none'; }
+  else { document.getElementById('btn-geo').style.display='none'; document.getElementById('btn-import-ok').style.display='none'; }
+}
+
+function getMapping(){
+  const m={};
+  FIELD_DEFS.forEach(fd=>{ m[fd.key]=document.getElementById('map-'+fd.key)?.value||''; });
+  return m;
+}
+
+function applyMapping(row, m){
+  const get=k=>m[k]?String(row[m[k]]||'').trim():'';
+  return{
+    id:get('id')||'D-'+Math.random().toString(36).slice(2,7).toUpperCase(),
+    lat:parseFloat(get('lat'))||null,
+    lng:parseFloat(get('lng'))||null,
+    adresse:get('adresse'), cp:get('cp'), ville:get('ville'),
+    tournee:get('tournee'), secteur:get('secteur'),
+    technicien:get('technicien'), rt:get('rt'), ref:get('ref')
+  };
+}
+
+// ════════════════════════════════════════════════════════════
+// GEOCODING (api-adresse.data.gouv.fr)
+// ════════════════════════════════════════════════════════════
+async function startGeocode(){
+  const m=getMapping();
+  pendingImport=rawRows.map(r=>applyMapping(r,m));
+  const toGeo=pendingImport.filter(d=>!d.lat||!d.lng);
+
+  document.getElementById('imp-step-map').style.display='none';
+  document.getElementById('imp-step-sheet').style.display='none';
+  document.getElementById('imp-step-geo').style.display='block';
+  document.getElementById('btn-geo').style.display='none';
+
+  const BATCH=50, total=toGeo.length;
+  let done=0, ok=0, fail=0;
+  const t0=Date.now();
+
+  for(let i=0;i<toGeo.length;i+=BATCH){
+    if(geoCancelled) break;
+    const batch=toGeo.slice(i,i+BATCH);
+
+    // Build CSV for batch
+    const lines=['id,adresse,postcode,city'];
+    batch.forEach(d=>{
+      const safe=v=>'"'+(v||'').replace(/"/g,'""')+'"';
+      lines.push([safe(d.id),safe(d.adresse||''),safe(d.cp||''),safe(d.ville||'')].join(','));
+    });
+
+    try{
+      const fd=new FormData();
+      fd.append('data',new Blob([lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'adresses.csv');
+      fd.append('columns','adresse');
+      if(batch.some(d=>d.cp)) fd.append('postcode','postcode');
+      if(batch.some(d=>d.ville)) fd.append('citycode','city');
+      fd.append('result_columns','result_latitude');
+      fd.append('result_columns','result_longitude');
+      fd.append('result_columns','result_score');
+
+      const resp=await fetch('https://api-adresse.data.gouv.fr/search/csv/',{method:'POST',body:fd});
+      if(!resp.ok) throw new Error('HTTP '+resp.status);
+      const txt=await resp.text();
+      const parsed=Papa.parse(txt,{header:true,skipEmptyLines:true});
+
+      parsed.data.forEach(row=>{
+        const lat=parseFloat(row['result_latitude']||'');
+        const lng=parseFloat(row['result_longitude']||'');
+        const score=parseFloat(row['result_score']||'0');
+        const rawId=Object.values(row)[0]||'';
+        const id=rawId.replace(/^"|"$/g,'').trim();
+        if(lat&&lng&&score>0.2){
+          const d=pendingImport.find(x=>x.id===id)||pendingImport.find(x=>rawId.includes(x.id));
+          if(d&&!d.lat){d.lat=lat;d.lng=lng;ok++;}
+          else if(!d) fail++;
+        } else fail++;
+      });
+    } catch(e){
+      // Fallback: individual JSON geocoding
+      for(const d of batch){
+        if(geoCancelled) break;
+        if(d.lat&&d.lng) continue;
+        try{
+          const q=encodeURIComponent([d.adresse,d.cp,d.ville].filter(Boolean).join(' '));
+          const r=await fetch(`https://api-adresse.data.gouv.fr/search/?q=${q}&limit=1${d.cp?'&postcode='+encodeURIComponent(d.cp):''}`);
+          const j=await r.json();
+          if(j.features?.length&&j.features[0].properties.score>0.2){
+            const [lng2,lat2]=j.features[0].geometry.coordinates;
+            d.lat=lat2; d.lng=lng2; ok++;
+          } else fail++;
+        } catch{ fail++; }
+        await new Promise(r=>setTimeout(r,60));
+      }
+    }
+
+    done+=batch.length;
+    const pct=Math.round(done/total*100);
+    document.getElementById('geo-bar').style.width=pct+'%';
+    document.getElementById('geo-done').textContent=`${done}/${total} — ✅ ${ok}  ❌ ${fail}`;
+    const elapsed=(Date.now()-t0)/1000;
+    document.getElementById('geo-eta').textContent=done<total&&elapsed>0?`~${Math.round(elapsed/done*(total-done))}s restant`:'';
+    document.getElementById('geo-info').textContent=`Géocodage via api-adresse.data.gouv.fr`;
+
+    if(i+BATCH<toGeo.length) await new Promise(r=>setTimeout(r,300));
+  }
+
+  document.getElementById('imp-step-geo').style.display='none';
+  document.getElementById('imp-step-done').style.display='block';
+  document.getElementById('imp-result').innerHTML=`✅ <strong>${ok}</strong> adresses géocodées${fail?` — ⚠ ${fail} échouées`:''}`;
+  document.getElementById('btn-import-ok').style.display='block';
+  document.getElementById('btn-import-ok').textContent='Importer';
+}
+
+function confirmImport(){
+  const m=getMapping();
+  if(!pendingImport) pendingImport=rawRows.map(r=>applyMapping(r,m));
+  const valid=pendingImport.filter(d=>d.lat&&d.lng);
+  if(!valid.length){
+    notify('Aucun appareil avec coordonnées GPS. Géocodez d\'abord ou ajoutez les colonnes lat/lng.','error');
+    return;
+  }
+  devices=valid;
+
+  // Auto-create technicians
+  [...new Set(devices.map(d=>d.technicien).filter(Boolean))].forEach((name,i)=>{
+    if(!technicians.find(t=>t.name===name))
+      technicians.push({id:'tec_'+Date.now()+i,name,code:'TECH-'+(i+1).toString().padStart(2,'0'),color:COLORS[i%COLORS.length]});
+  });
+  // Auto-create RTs
+  [...new Set(devices.map(d=>d.rt).filter(Boolean))].forEach((name,i)=>{
+    if(!rts.find(r=>r.name===name))
+      rts.push({id:'rt_'+Date.now()+i,name,code:'RT-'+(i+1).toString().padStart(2,'0'),color:COLORS[(i+5)%COLORS.length]});
+  });
+  // Auto-create sectors
+  [...new Set(devices.map(d=>d.secteur||d.tournee).filter(Boolean))].forEach((sname,i)=>{
+    if(!sectors.find(s=>s.name===sname)){
+      const devs=devices.filter(d=>(d.secteur||d.tournee)===sname).map(d=>d.id);
+      const firstName=devices.find(d=>(d.secteur||d.tournee)===sname);
+      const tech=technicians.find(t=>t.name===firstName?.technicien);
+      const rt=rts.find(r=>r.name===firstName?.rt);
+      sectors.push({id:'sec_'+Date.now()+i,name:sname,techId:tech?.id||null,rtId:rt?.id||null,color:COLORS[i%COLORS.length],devices:devs});
+    }
+  });
+
+  closeModal('m-import');
+  renderAll();
+  fitView();
+  notify(`${valid.length} appareils importés ✓ (${valid.length-devices.filter(d=>sectors.some(s=>s.devices.includes(d.id))).length} non assignés)`,'success');
+}
+
+// ════════════════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════════════════
+function exportData(format){
+  const rows=devices.map(d=>{
+    const sec=sectors.find(s=>s.devices.includes(d.id));
+    const tech=sec?technicians.find(t=>t.id===sec.techId):null;
+    const rt=sec?rts.find(r=>r.id===sec.rtId):null;
+    return{
+      id:d.id, lat:d.lat, lng:d.lng,
+      adresse:d.adresse||'', cp:d.cp||'', ville:d.ville||'',
+      tournee:d.tournee||'', ref:d.ref||'',
+      secteur:sec?sec.name:'',
+      technicien:tech?tech.name:'',
+      rt:rt?rt.name:''
+    };
+  });
+
+  if(format==='csv'){
+    const csv=Papa.unparse(rows);
+    dl(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),'geosecteur_'+today()+'.csv');
+  } else {
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Appareils');
+    // Summary sheet
+    const sum=sectors.map(s=>{
+      const tech=technicians.find(t=>t.id===s.techId);
+      const rt=rts.find(r=>r.id===s.rtId);
+      return{secteur:s.name,nb_appareils:s.devices.length,technicien:tech?tech.name:'',rt:rt?rt.name:''};
+    });
+    if(sum.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(sum),'Secteurs');
+    XLSX.writeFile(wb,'geosecteur_'+today()+'.xlsx');
+  }
+  notify('Export téléchargé ✓','success');
+}
+function dl(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click(); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+// ════════════════════════════════════════════════════════════
+// DEMO
+// ════════════════════════════════════════════════════════════
+function loadDemo(){
+  devices=[];sectors=[];technicians=[];rts=[];
+  const cities=[[48.86,2.35,'Paris'],[45.75,4.85,'Lyon'],[43.30,5.37,'Marseille'],[43.60,1.44,'Toulouse'],[47.22,-1.55,'Nantes']];
+  const streets=['rue de la Paix','avenue Foch','boulevard Haussmann','rue du Commerce','allée des Roses'];
+  cities.forEach((c,ci)=>{
+    for(let i=0;i<40;i++){
+      devices.push({
+        id:`${c[2].slice(0,3).toUpperCase()}-${String(i+1).padStart(3,'0')}`,
+        lat:c[0]+(Math.random()-.5)*.3, lng:c[1]+(Math.random()-.5)*.3,
+        adresse:`${Math.floor(Math.random()*200)+1} ${streets[i%5]}`,
+        cp:String(10000+ci*10000+Math.floor(Math.random()*999)), ville:c[2],
+        tournee:`Tournée ${String.fromCharCode(65+Math.floor(i/8))}`,
+        technicien:'', rt:'', secteur:'', ref:''
+      });
+    }
+  });
+  technicians=[
+    {id:'t1',name:'Martin Dupont',code:'TECH-01',color:'#1a56ff'},
+    {id:'t2',name:'Sophie Bernard',code:'TECH-02',color:'#00a86b'},
+    {id:'t3',name:'Karim Yazid',code:'TECH-03',color:'#f55c00'},
+    {id:'t4',name:'Claire Moreau',code:'TECH-04',color:'#7c3aed'},
+    {id:'t5',name:'Lucas Petit',code:'TECH-05',color:'#e53e3e'},
+  ];
+  rts=[
+    {id:'r1',name:'Jean Leclerc',code:'RT-Nord',color:'#0891b2'},
+    {id:'r2',name:'Marie Durand',code:'RT-Sud',color:'#d97706'},
+  ];
+  renderAll(); fitView();
+  notify(`${devices.length} appareils démo chargés ✓`,'success');
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER ALL
+// ════════════════════════════════════════════════════════════
+function renderAll(){
+  renderMarkers();
+  renderSectorList();
+  renderTechList();
+  updateStats();
+  rebuildFilterDropdowns();
+  updateFilterSummary();
+}
+
+function renderSectorList(){
+  const el=document.getElementById('sector-list');
+  if(!sectors.length){el.innerHTML='<div class="empty"><div class="ei">🗂</div><p>Aucun secteur créé</p></div>';return;}
+  el.innerHTML=sectors.map(s=>{
+    const tech=technicians.find(t=>t.id===s.techId);
+    const rt=rts.find(r=>r.id===s.rtId);
+    return`<div class="card">
+      <div class="card-hd">
+        <div class="card-color" style="background:${s.color}"></div>
+        <div class="card-name">${s.name}</div>
+        <span class="card-count">${s.devices.length}</span>
+        <div class="card-acts">
+          <button class="ia" onclick="editSector('${s.id}')" title="Éditer">✎</button>
+          <button class="ia del" onclick="deleteSector('${s.id}')" title="Supprimer">✕</button>
+        </div>
+      </div>
+      <div class="card-meta">
+        ${tech?`<span style="color:${tech.color}">👷 ${tech.name}</span>`:'<span>Non assigné</span>'}
+        ${rt?`<span style="color:${rt.color}">⭐ ${rt.name}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTechList(){
+  const el=document.getElementById('tech-list');
+  if(!technicians.length&&!rts.length){el.innerHTML='<div class="empty"><div class="ei">👷</div><p>Aucun membre d\'équipe</p></div>';return;}
+  let html='';
+  if(technicians.length){
+    html+=`<div class="stitle">Techniciens</div>`;
+    html+=technicians.map(t=>{
+      const cnt=sectors.filter(s=>s.techId===t.id).reduce((a,s)=>a+s.devices.length,0);
+      const secs=sectors.filter(s=>s.techId===t.id).map(s=>s.name).join(', ')||'Aucun secteur';
+      return`<div class="card">
+        <div class="card-hd"><div class="card-dot" style="background:${t.color}"></div><div class="card-name">${t.name}</div><span class="card-count">${cnt}</span></div>
+        <div class="card-meta"><span>${secs}</span></div>
+      </div>`;
+    }).join('');
+  }
+  if(rts.length){
+    html+=`<div class="stitle" style="margin-top:12px">Responsables de Tournée</div>`;
+    html+=rts.map(r=>{
+      const cnt=sectors.filter(s=>s.rtId===r.id).reduce((a,s)=>a+s.devices.length,0);
+      return`<div class="card">
+        <div class="card-hd"><div class="card-dot" style="background:${r.color}"></div><div class="card-name">${r.name}</div><span class="card-count">${cnt}</span></div>
+        <div class="card-meta"><span style="color:var(--muted)">${r.code}</span></div>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML=html;
+}
+
+function updateStats(){
+  document.getElementById('st-dev').textContent=devices.length.toLocaleString('fr');
+  document.getElementById('st-sec').textContent=sectors.length;
+  document.getElementById('st-tec').textContent=technicians.length+rts.length;
+  const assigned=new Set(sectors.flatMap(s=>s.devices));
+  document.getElementById('st-una').textContent=devices.filter(d=>!assigned.has(d.id)).length.toLocaleString('fr');
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function fitView(){
+  const pts=devices.filter(d=>d.lat&&d.lng);
+  if(!pts.length) return;
+  map.fitBounds(L.latLngBounds(pts.map(d=>[d.lat,d.lng])),{padding:[40,40]});
+}
+
+function toggleLabels(){
+  showLabels=!showLabels;
+  document.getElementById('tool-labels')?.classList.toggle('on',showLabels);
+  renderMarkers();
+}
+
+function toggleCluster(){
+  clusterEnabled=!clusterEnabled;
+  document.getElementById('tool-cluster')?.classList.toggle('on',clusterEnabled);
+  if(clusterEnabled){
+    if(map.hasLayer(normalGroup)) map.removeLayer(normalGroup);
+  } else {
+    if(!map.hasLayer(normalGroup)) map.addLayer(normalGroup);
+  }
+  renderMarkers();
+}
+
+function fillPersonSel(id,list,placeholder){
+  document.getElementById(id).innerHTML=`<option value="">${placeholder}</option>`+
+    list.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+function fillColors(cid,type,sel){
+  document.getElementById(cid).innerHTML=COLORS.map(c=>
+    `<div class="csw ${c===sel?'on':''}" style="background:${c}" onclick="pickColor('${c}','${type}','${cid}',this)"></div>`
+  ).join('');
+  if(type==='sec') colorSec=sel; else colorPer=sel;
+}
+function pickColor(c,type,cid,el){
+  document.querySelectorAll(`#${cid} .csw`).forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  if(type==='sec') colorSec=c; else colorPer=c;
+}
+
+function switchTab(t){
+  ['filters','tools','sectors','techs'].forEach(x=>{
+    document.getElementById('panel-'+x).classList.toggle('on',x===t);
+    document.getElementById('tab-'+x).classList.toggle('on',x===t);
+  });
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+function notify(msg,type='info'){
+  const el=document.createElement('div');
+  el.className=`notif ${type}`;
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  el.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},3500);
+}
+
+// Drag & drop on import zone
+document.getElementById('drop-zone')?.addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('drag');});
+document.getElementById('drop-zone')?.addEventListener('dragleave',e=>e.currentTarget.classList.remove('drag'));
+document.getElementById('drop-zone')?.addEventListener('drop',e=>{
+  e.preventDefault();e.currentTarget.classList.remove('drag');
+  const f=e.dataTransfer.files[0];if(f){const inp=document.getElementById('file-input');const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;handleFile({target:{files:[f]}});}
+});
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+// Enable clustering by default
+document.getElementById('tool-cluster')?.classList.add('on');
+renderAll();
+</script>
+</body>
+</html>
